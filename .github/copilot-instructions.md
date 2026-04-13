@@ -71,9 +71,9 @@ U-Boot 2022.04 uses the `extlinux` distro boot mechanism. No `boot.scr` is neede
 - Vendor kernel repo: [orangepi-xunlong/linux-orangepi](https://github.com/orangepi-xunlong/linux-orangepi)
 - Branch: `orange-pi-5.10-rk3399`
 - DTS file: `arch/arm64/boot/dts/rockchip/rk3399-orangepi-800.dts`
-- AUR package: `linux-aarch64-orangepi` (or equivalent vendor kernel package)
+- **No AUR package exists** for the vendor kernel — users must build it manually from source.
 
-Without the vendor kernel, the board will still boot using a generic RK3399 DTB, but OPi 800-specific peripherals (keyboard controller, UniSOC WiFi/BT, etc.) will not function correctly.
+The DTB bundled in this package (sourced from Manjaro ARM 22.07) is sufficient to boot with Ethernet. OPi 800-specific peripherals (keyboard controller, UniSOC WiFi/BT) require the vendor kernel built from source.
 
 ---
 
