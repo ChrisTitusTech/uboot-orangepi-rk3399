@@ -19,6 +19,7 @@ This is an Arch Linux ARM PKGBUILD that builds and packages U-Boot for the **Ora
 | Serial console | ttyS2 @ 1500000 baud, 8N1 |
 | Earlycon | `uart8250,mmio32,0xff1a0000` |
 | Ethernet node | `ethernet@fe300000` (GMAC) |
+| Ethernet PHY | YT8531C (Motorcomm 1GbE, PHY addr=1) |
 | Compatible string | `xunlong,orangepi-800`, `rockchip,rk3399` |
 
 ### Storage device numbering
@@ -73,7 +74,7 @@ U-Boot 2022.04 uses the `extlinux` distro boot mechanism. No `boot.scr` is neede
 - DTS file: `arch/arm64/boot/dts/rockchip/rk3399-orangepi-800.dts`
 - **No AUR package exists** for the vendor kernel — users must build it manually from source.
 
-The DTB bundled in this package (sourced from Manjaro ARM 22.07) is sufficient to boot with Ethernet. OPi 800-specific peripherals (keyboard controller, UniSOC WiFi/BT) require the vendor kernel built from source.
+The DTB bundled in this package (sourced from Manjaro ARM 22.07) is sufficient to boot with Ethernet. Full hardware inventory from schematic V1.8 (2022-11-08): PMIC=RK808-D, ETH PHY=YT8531C (Motorcomm), WiFi/BT=AP6256 (BCM43456, brcmfmac), Audio=ES8316, Keyboard MCU=HT68FB571 (USB HID), VGA bridge=CH7517 (eDP→VGA), RTC=BL5372. All OPi 800-specific peripherals require the vendor kernel built from source.
 
 ---
 

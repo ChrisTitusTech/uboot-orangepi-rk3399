@@ -137,9 +137,28 @@ The `.install` hook will offer to reflash U-Boot to `/dev/mmcblk1` on install an
 
 ## Notes on Hardware Support
 
-The bundled `rk3399-orangepi-800.dtb` is sourced from Manjaro ARM 22.07 and is sufficient to boot the system with Ethernet. However, OPi 800-specific hardware (keyboard controller, UniSOC WiFi/BT) requires the OrangePi vendor kernel.
+The bundled `rk3399-orangepi-800.dtb` is sourced from Manjaro ARM 22.07. Hardware support status based on the OPi 800 schematic (V1.8, 2022-11-08):
 
-No AUR package exists for the vendor kernel. If you need full hardware support, you must build it manually from the OrangePi vendor kernel source:
+| Hardware | Chip | Works with bundled DTB |
+|---|---|---|
+| PMIC | RK808-D | ✅ Yes (required for boot) |
+| RAM (4GB LPDDR4) | 4× LPDDR4 BGA200 | ✅ Yes |
+| eMMC (64GB) | eMMC 5.0 BGA169 | ✅ Yes |
+| SD card | TF-CKT01-009D | ✅ Yes |
+| Ethernet | YT8531C (Motorcomm 1GbE) | ✅ Yes |
+| HDMI output | RK3399 internal | ⚠️ Partial |
+| USB 2.0 / USB 3.0 | RK3399 TypeC PHY | ⚠️ Partial |
+| WiFi / Bluetooth | AP6256 (BCM43456 via SDIO+UART) | ❌ No — needs vendor kernel + firmware |
+| Audio | ES8316 codec (I2C1 + I2S0) | ❌ No — needs vendor kernel |
+| Speaker amp | XPT8871 (GPIO-controlled) | ❌ No — needs vendor kernel |
+| Keyboard MCU | HT68FB571 (USB HID via USB0) | ❌ No — needs vendor kernel |
+| VGA output | CH7517 eDP-to-VGA bridge | ❌ No — no mainline driver |
+| RTC | BL5372 (I2C) | ❌ No — needs DTS node |
+| 26-pin GPIO header | I2C / SPI / UART / PWM / GPIO | ⚠️ Partial |
+
+For WiFi, the AP6256 uses the standard `brcmfmac` driver but requires firmware from the `linux-firmware` package and proper DTS SDIO/GPIO nodes.
+
+For full hardware support, you must build the OrangePi vendor kernel from source — no AUR package exists:
 
 - Repository: [orangepi-xunlong/linux-orangepi](https://github.com/orangepi-xunlong/linux-orangepi)
 - Branch: `orange-pi-5.10-rk3399`
