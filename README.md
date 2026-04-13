@@ -17,15 +17,17 @@ This package provides everything needed to boot: the bootloader images, a baseli
 
 ## Build the package
 
-No cross-compiler needed — ships pre-built binaries:
+No cross-compiler needed — ships pre-built binaries. The package targets `aarch64` but contains no compiled code, so build it on any Linux host with `--ignorearch`:
 
 ```bash
 git clone https://github.com/ChrisTitusTech/uboot-orangepi-rk3399
 cd uboot-orangepi-rk3399
-makepkg -s
+makepkg --ignorearch
 ```
 
-This produces `uboot-orangepi-800-2022.04-1-aarch64.pkg.tar.zst`. Keep it in the current directory for the steps below.
+This produces `uboot-orangepi-800-2022.04-1-aarch64.pkg.tar.zst` in the current directory. Keep it there for the steps below.
+
+> **Note**: `makepkg` is an Arch Linux tool. On non-Arch hosts, install it via your distro or use an Arch Linux container. Alternatively, on the OPi 800 itself after first boot you can run `makepkg` natively without `--ignorearch`.
 
 ---
 
@@ -58,9 +60,11 @@ mount /dev/sdX2 root
 
 ```bash
 wget https://archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz
-bsdtar -xpf ArchLinuxARM-aarch64-latest.tar.gz -C root
+bsdtar -xpf ArchLinuxARM-aarch64-latest.tar.gz -C root --exclude='./boot/dtbs'
 mv root/boot/* boot/
 ```
+
+> The `--exclude='./boot/dtbs'` flag skips the thousands of upstream DTB files for other ARM boards, which would otherwise fill the 256 MB FAT partition. The OPi 800 DTB is installed in Step 4 from the package.
 
 ### Step 4 — Install bootloader files and configure boot
 
