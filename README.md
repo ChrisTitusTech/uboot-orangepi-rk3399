@@ -100,6 +100,7 @@ dd if=boot/u-boot.itb    of=/dev/sdX seek=16384 conv=notrunc,fsync
 ### Step 6 — Copy package and unmount
 
 ```bash
+mkdir -p root/home/alarm
 cp uboot-orangepi-800-*.pkg.tar.zst root/home/alarm/
 sync
 umount boot root
