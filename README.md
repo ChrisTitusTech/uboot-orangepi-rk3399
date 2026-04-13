@@ -22,10 +22,10 @@ No cross-compiler needed — ships pre-built binaries. The package targets `aarc
 ```bash
 git clone https://github.com/ChrisTitusTech/uboot-orangepi-rk3399
 cd uboot-orangepi-rk3399
-makepkg --ignorearch
+CARCH=aarch64 makepkg --ignorearch
 ```
 
-This produces `uboot-orangepi-800-2022.04-1-aarch64.pkg.tar.zst` in the current directory. Keep it there for the steps below.
+This produces `uboot-orangepi-800-2022.04-1-aarch64.pkg.tar.zst` in the current directory. The `CARCH=aarch64` prefix ensures the package is tagged for the correct architecture regardless of the build host. Keep it there for the steps below.
 
 > **Note**: `makepkg` is an Arch Linux tool. On non-Arch hosts, install it via your distro or use an Arch Linux container. Alternatively, on the OPi 800 itself after first boot you can run `makepkg` natively without `--ignorearch`.
 
