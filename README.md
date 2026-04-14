@@ -130,6 +130,7 @@ Log in via SSH (use your router's DHCP table to find the IP) or serial console (
 Initialize pacman and register the package so future upgrades reflash U-Boot automatically:
 
 ```bash
+pacman -S archlinux-keyring
 pacman-key --init
 pacman-key --populate archlinuxarm
 pacman -Syu
@@ -137,6 +138,95 @@ pacman -U /home/alarm/uboot-orangepi-800-*.pkg.tar.zst
 ```
 
 The `.install` hook will offer to reflash U-Boot to `/dev/mmcblk1` on install and upgrade.
+
+---
+
+## Optional: Copy Installation to eMMC
+
+Once the system is running from the SD card, you can migrate it to the on-board 64 GB eMMC (`/dev/mmcblk0`) and expand the root partition to fill it. Run all commands as **root** while booted from the SD card.
+
+> **Note**: This will erase everything currently on the eMMC (including any factory Android/OrangePi OS image).
+
+### Step 1 — Install rsync
+
+```bash
+pacman -S rsync
+```
+
+### Step 2 — Partition the eMMC
+
+```bash
+parted -s /dev/mmcblk0 mklabel gpt
+parted -s /dev/mmcblk0 mkpart boot fat32 62500s 320MiB
+parted -s /dev/mmcblk0 set 1 boot on
+parted -s /dev/mmcblk0 mkpart root ext4 320MiB 100%
+```
+
+### Step 3 — Format
+
+```bash
+mkfs.fat -F32 -n BOOT /dev/mmcblk0p1
+mkfs.ext4 -L ROOT /dev/mmcblk0p2
+```
+
+### Step 4 — Mount eMMC partitions
+
+```bash
+mkdir -p /mnt/emmc/{boot,root}
+mount /dev/mmcblk0p1 /mnt/emmc/boot
+mount /dev/mmcblk0p2 /mnt/emmc/root
+```
+
+### Step 5 — Copy boot partition
+
+```bash
+cp -a /boot/. /mnt/emmc/boot/
+```
+
+### Step 6 — Copy root filesystem
+
+The `--one-file-system` flag keeps rsync from crossing into `/boot` (FAT) or any other mounted filesystems:
+
+```bash
+rsync -aAX --one-file-system \
+  --exclude=/proc --exclude=/sys --exclude=/dev \
+  --exclude=/run  --exclude=/tmp --exclude=/mnt \
+  / /mnt/emmc/root/
+```
+
+### Step 7 — Flash U-Boot to eMMC
+
+```bash
+dd if=/boot/idbloader.img of=/dev/mmcblk0 seek=64    conv=notrunc,fsync
+dd if=/boot/u-boot.itb    of=/dev/mmcblk0 seek=16384 conv=notrunc,fsync
+```
+
+### Step 8 — Update extlinux.conf to point at the eMMC root
+
+```bash
+EMMC_ROOT_PARTUUID=$(blkid -s PARTUUID -o value /dev/mmcblk0p2)
+sed -i "s|root=PARTUUID=[^ ]*|root=PARTUUID=${EMMC_ROOT_PARTUUID}|" \
+  /mnt/emmc/boot/extlinux/extlinux.conf
+```
+
+### Step 9 — Update /etc/fstab on the eMMC root
+
+```bash
+EMMC_BOOT_UUID=$(blkid -s UUID -o value /dev/mmcblk0p1)
+EMMC_ROOT_UUID=$(blkid -s UUID -o value /dev/mmcblk0p2)
+printf "UUID=%s\t/boot\tvfat\tdefaults\t0 2\nUUID=%s\t/\text4\tdefaults\t0 1\n" \
+  "$EMMC_BOOT_UUID" "$EMMC_ROOT_UUID" > /mnt/emmc/root/etc/fstab
+```
+
+### Step 10 — Unmount and reboot
+
+```bash
+sync
+umount /mnt/emmc/boot /mnt/emmc/root
+reboot
+```
+
+After reboot, U-Boot will find the eMMC bootloader first (eMMC is `mmcblk0`, the primary boot device) and load the kernel from the eMMC boot partition. The SD card can be removed once the eMMC boot is confirmed working.
 
 ---
 
