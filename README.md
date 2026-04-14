@@ -198,30 +198,53 @@ This is caused by a PHY driver chain failure:
 
 **Root cause:** The `motorcomm` module must be loaded *before* the `dwmac-rk` GMAC driver probes the PHY bus at boot. If Generic PHY claims the YT8531C first, loading `motorcomm` later won't rebind it — and `ip link set end0 up` will return `RTNETLINK answers: connection timed out` because the GMAC DMA is still waiting for the RGMII clock that Generic PHY never provides.
 
-**Permanent fix (survives reboots):**
+**Step 1 — make motorcomm load at boot (before GMAC probes):**
 ```bash
 echo "motorcomm" | sudo tee /etc/modules-load.d/motorcomm.conf
 reboot
 ```
 
-**Immediate fix without reboot — manually rebind the PHY:**
+**Step 2 — after reboot, confirm motorcomm bound the PHY (not Generic PHY):**
+```bash
+dmesg | grep -iE 'motorcomm|Generic PHY|stmmac_hw_setup|Failed to reset'
+```
+You should see `motorcomm` in the PHY driver line and no `DMA engine initialization failed`.
+
+**Step 3 — the interface is named `end0`, not `eth0`**
+
+The kernel renames `eth0` to `end0` via systemd predictable network naming. This is normal, but ALARM's per-interface `dhcpcd@eth0.service` won't apply to `end0`, so the interface stays down even after motorcomm fixes the PHY.
+
+Enable dhcpcd globally so it handles whatever name the interface gets:
+```bash
+systemctl enable --now dhcpcd.service
+```
+
+Or bring it up manually for immediate access:
+```bash
+ip link set end0 up
+dhcpcd end0
+```
+
+**Immediate fix without reboot — manually rebind the PHY (if you cannot reboot):**
 ```bash
 echo "stmmac-0:00" > /sys/bus/mdio_bus/drivers/"Generic PHY"/unbind
 echo "stmmac-0:00" > /sys/bus/mdio_bus/drivers/motorcomm/bind
 ip link set end0 up
+dhcpcd end0
 ```
 
-**3. Check if the Motorcomm PHY driver is available:**
+**Check if the Motorcomm PHY driver is available:**
 ```bash
 modinfo motorcomm 2>/dev/null || echo "module not found"
 ```
 
-If `modprobe motorcomm` returns "Module not found", the mainline `linux-aarch64` kernel was built without it and the vendor kernel is required (see Hardware Support table above).
+If `modinfo motorcomm` returns "Module not found", the mainline `linux-aarch64` kernel was built without it and the vendor kernel is required (see Hardware Support table above).
 
 **Summary of causes:**
 
 | Cause | Symptom | Fix |
 |---|---|---|
-| `motorcomm` module not loaded at boot | `PHY driver [Generic PHY]`, `Failed to reset the dma`, `connection timed out` | `echo motorcomm > /etc/modules-load.d/motorcomm.conf` then reboot |
-| PHY driver missing from kernel | `modinfo motorcomm` returns "Module not found" | Needs vendor kernel |
+| `motorcomm` not loaded at boot | `PHY driver [Generic PHY]`, `Failed to reset the dma`, `connection timed out` | `echo motorcomm > /etc/modules-load.d/motorcomm.conf` + reboot |
+| `dhcpcd@eth0.service` active but interface is `end0` | motorcomm loads fine, DMA OK, but no IP address | `systemctl enable --now dhcpcd.service` |
+| PHY driver missing from kernel | `modinfo motorcomm` → "Module not found" | Needs vendor kernel |
 | DTB/mainline GMAC clock mismatch | `dwmac-rk` probe fails entirely in `dmesg` | Needs vendor kernel |
