@@ -169,3 +169,44 @@ For full hardware support, you must build the OrangePi vendor kernel from source
 - Branch: `orange-pi-5.10-rk3399`
 
 After installing a custom kernel, U-Boot picks up the new kernel and DTB from `/boot` automatically via `extlinux/extlinux.conf`.
+
+---
+
+## Troubleshooting
+
+### No Ethernet
+
+The board boots and HDMI/keyboard work, but Ethernet has no link.
+
+**1. Check if the interface appears:**
+```bash
+ip link
+```
+
+**2. Check kernel messages for GMAC/PHY errors:**
+```bash
+dmesg | grep -iE 'eth|gmac|phy|motorcomm|yt8|stmmac|dwmac'
+```
+
+**3. Check if the Motorcomm PHY driver is available:**
+```bash
+modinfo motorcomm 2>/dev/null || echo "module not found"
+lsmod | grep motorcomm
+```
+
+**4. If the interface exists but has no link, try bringing it up manually:**
+```bash
+ip link set eth0 up
+ethtool eth0
+```
+
+**Likely causes:**
+
+| Cause | Symptom | Fix |
+|---|---|---|
+| `motorcomm` module not loaded | Interface exists, no link | `modprobe motorcomm` |
+| PHY driver missing from kernel | `dmesg` shows "no PHY found" | Needs vendor kernel |
+| DTB/mainline GMAC driver mismatch | Interface never probes in `dmesg` | DTB incompatibility |
+| GMAC clock/reset not mapped | `dwmac-rk` probe fails in `dmesg` | DTB incompatibility |
+
+The YT8531C (Motorcomm) PHY requires the `motorcomm` driver. The mainline `linux-aarch64` kernel includes it, but if the `dwmac-rk` GMAC driver fails to probe (clock or reset line mismatch between the Manjaro vendor DTB and the mainline kernel), Ethernet will not come up regardless of the PHY. In that case, the vendor kernel is required.
