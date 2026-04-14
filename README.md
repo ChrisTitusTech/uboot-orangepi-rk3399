@@ -1,6 +1,6 @@
 # uboot-orangepi-800
 
-U-Boot 2022.04 bootloader package for the **Orange Pi 800** (Rockchip RK3399). Pre-built binaries sourced from Manjaro ARM 22.07.
+U-Boot 2022.04 bootloader package for the **Orange Pi 800** (Rockchip RK3399). Pre-built binaries sourced from Manjaro ARM 22.07. These were rebuilt based on this source, with a new dts and dtb as of 26.04.13 for use with arch linux arm. 
 
 This package provides everything needed to boot: the bootloader images, a baseline `extlinux.conf`, and the `rk3399-orangepi-800.dtb` device tree (not included in the stock `linux-aarch64` package).
 
