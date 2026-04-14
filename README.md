@@ -178,7 +178,7 @@ After installing a custom kernel, U-Boot picks up the new kernel and DTB from `/
 
 The board boots and HDMI/keyboard work, but Ethernet has no link.
 
-**1. Check if the interface appears:**
+**1. Check if the interface appears (note: it may be named `end0`, not `eth0`):**
 ```bash
 ip link
 ```
@@ -188,25 +188,40 @@ ip link
 dmesg | grep -iE 'eth|gmac|phy|motorcomm|yt8|stmmac|dwmac'
 ```
 
+**Known failure: `stmmac_hw_setup: DMA engine initialization failed`**
+
+This is caused by a PHY driver chain failure:
+
+1. The YT8531C PHY attaches as **`[unbound]` → Generic PHY** because the `motorcomm` kernel module is not loaded.
+2. The Generic PHY does not handle the YT8531C's reset GPIO, so the PHY never provides the required 125 MHz RGMII clock to the GMAC.
+3. Without that clock, the GMAC DMA reset times out → `Failed to reset the dma` → `DMA engine initialization failed` → `Hw setup failed`.
+
+**Root cause:** The `motorcomm` module must be loaded *before* the `dwmac-rk` GMAC driver probes the PHY bus at boot. If Generic PHY claims the YT8531C first, loading `motorcomm` later won't rebind it — and `ip link set end0 up` will return `RTNETLINK answers: connection timed out` because the GMAC DMA is still waiting for the RGMII clock that Generic PHY never provides.
+
+**Permanent fix (survives reboots):**
+```bash
+echo "motorcomm" | sudo tee /etc/modules-load.d/motorcomm.conf
+reboot
+```
+
+**Immediate fix without reboot — manually rebind the PHY:**
+```bash
+echo "stmmac-0:00" > /sys/bus/mdio_bus/drivers/"Generic PHY"/unbind
+echo "stmmac-0:00" > /sys/bus/mdio_bus/drivers/motorcomm/bind
+ip link set end0 up
+```
+
 **3. Check if the Motorcomm PHY driver is available:**
 ```bash
 modinfo motorcomm 2>/dev/null || echo "module not found"
-lsmod | grep motorcomm
 ```
 
-**4. If the interface exists but has no link, try bringing it up manually:**
-```bash
-ip link set eth0 up
-ethtool eth0
-```
+If `modprobe motorcomm` returns "Module not found", the mainline `linux-aarch64` kernel was built without it and the vendor kernel is required (see Hardware Support table above).
 
-**Likely causes:**
+**Summary of causes:**
 
 | Cause | Symptom | Fix |
 |---|---|---|
-| `motorcomm` module not loaded | Interface exists, no link | `modprobe motorcomm` |
-| PHY driver missing from kernel | `dmesg` shows "no PHY found" | Needs vendor kernel |
-| DTB/mainline GMAC driver mismatch | Interface never probes in `dmesg` | DTB incompatibility |
-| GMAC clock/reset not mapped | `dwmac-rk` probe fails in `dmesg` | DTB incompatibility |
-
-The YT8531C (Motorcomm) PHY requires the `motorcomm` driver. The mainline `linux-aarch64` kernel includes it, but if the `dwmac-rk` GMAC driver fails to probe (clock or reset line mismatch between the Manjaro vendor DTB and the mainline kernel), Ethernet will not come up regardless of the PHY. In that case, the vendor kernel is required.
+| `motorcomm` module not loaded at boot | `PHY driver [Generic PHY]`, `Failed to reset the dma`, `connection timed out` | `echo motorcomm > /etc/modules-load.d/motorcomm.conf` then reboot |
+| PHY driver missing from kernel | `modinfo motorcomm` returns "Module not found" | Needs vendor kernel |
+| DTB/mainline GMAC clock mismatch | `dwmac-rk` probe fails entirely in `dmesg` | Needs vendor kernel |
