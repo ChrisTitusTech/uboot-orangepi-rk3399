@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # copy-to-emmc.sh — Migrate a running SD-card install to the on-board eMMC
 # Target board: OrangePi 800 (RK3399)
-#   /dev/mmcblk0  =  eMMC  (non-removable, always present)
-#   /dev/mmcblk1  =  SD card (current boot device)
+#
+# The eMMC and SD card can appear as either mmcblk0 or mmcblk1 depending on
+# probe order. This script auto-detects which is which via
+# /sys/block/mmcblkX/device/type (MMC = eMMC, SD = SD card).
 #
 # Run as root while booted from the SD card.
 # The script will partition, format, copy, flash U-Boot, fix extlinux.conf and
@@ -19,8 +21,21 @@ warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
 die()     { echo -e "${RED}[FATAL]${RESET} $*" >&2; exit 1; }
 heading() { echo -e "\n${BOLD}${CYAN}==> $*${RESET}"; }
 
+# ─── auto-detect eMMC device ─────────────────────────────────────────────────
+# Walk every mmcblkN and pick the one whose device/type is "MMC".
+EMMC_DEV=""
+for _dev in /sys/block/mmcblk*; do
+  [[ -f "${_dev}/device/type" ]] || continue
+  _type=$(< "${_dev}/device/type")
+  if [[ "${_type}" == "MMC" ]]; then
+    EMMC_DEV="/dev/$(basename "${_dev}")"
+    break
+  fi
+done
+[[ -n "${EMMC_DEV}" ]] || die "Could not find an eMMC device (no mmcblkN with type=MMC). Is this an OrangePi 800?"
+info "Auto-detected eMMC: ${EMMC_DEV}"
+
 # ─── constants ───────────────────────────────────────────────────────────────
-EMMC_DEV="/dev/mmcblk0"
 EMMC_BOOT_PART="${EMMC_DEV}p1"
 EMMC_ROOT_PART="${EMMC_DEV}p2"
 MNT_BASE="/mnt/emmc"
@@ -139,16 +154,12 @@ ok "OrangePi 800 firmware and runtime packages installed."
 # Verify the source device is a real block device
 [[ -b "${EMMC_DEV}" ]] || die "${EMMC_DEV} does not exist — is this an OrangePi 800?"
 
-# Confirm the target really is an eMMC (type = "MMC"), not an SD card
-EMMC_TYPE=$(cat "/sys/block/mmcblk0/device/type" 2>/dev/null || true)
-[[ "${EMMC_TYPE}" == "MMC" ]] || die "${EMMC_DEV} device type is '${EMMC_TYPE}', expected 'MMC'. Refusing to continue."
-ok "${EMMC_DEV} is eMMC (type=${EMMC_TYPE})."
+ok "${EMMC_DEV} is eMMC (auto-detected)."
 
 # Confirm we are currently booted from the SD card (/dev/mmcblk1)
-# Check that root filesystem is on mmcblk1 (not mmcblk0, which would mean
-# we're already running from eMMC).
+# Check that the root filesystem is NOT on the eMMC device we detected.
 ROOT_DEV=$(findmnt -n -o SOURCE / 2>/dev/null || true)
-if [[ "${ROOT_DEV}" == /dev/mmcblk0* ]]; then
+if [[ "${ROOT_DEV}" == "${EMMC_DEV}"* ]]; then
   die "Root filesystem appears to be on ${EMMC_DEV} — you are already running from eMMC!"
 fi
 ok "Currently booted from ${ROOT_DEV} (not eMMC)."
