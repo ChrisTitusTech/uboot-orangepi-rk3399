@@ -24,7 +24,7 @@ source=('idbloader.img'
 md5sums=('d0034efbfeb465732444094b59cabdea'
          'd5ed2a9edda0dbb197a0d38ea987085d'
          'aca02c2c1d70720d5abba09b865ccd10'
-         'b9980c7821a157f272fa4661e46320ee'
+         'fb99173182ee0be36b4d098ca439a31a'
          '46025371bb1887e2ba5bd7aef8a8f28c')
 
 build() {
