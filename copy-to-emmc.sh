@@ -48,14 +48,54 @@ _cleanup() {
 }
 trap _cleanup EXIT
 
+# ─── step 0: keyring init ────────────────────────────────────────────────────
+# Must happen before any pacman operations. The ALARM tarball ships with an
+# uninitialised keyring; skip if already done (gnupg dir is populated).
+heading "Step 0 — Initialising pacman keyring"
+if [[ ! -f /etc/pacman.d/gnupg/trustdb.gpg ]]; then
+  info "Keyring not initialised — running pacman-key --init (may take a moment)..."
+  pacman-key --init
+  pacman-key --populate archlinuxarm
+else
+  info "Keyring already initialised, skipping --init."
+fi
+info "Refreshing archlinuxarm-keyring package..."
+pacman -Sy --noconfirm --needed archlinuxarm-keyring
+pacman-key --populate archlinuxarm
+ok "Keyring ready."
+
 # ─── prerequisite checks ─────────────────────────────────────────────────────
 heading "Prerequisite checks"
 
 [[ $EUID -eq 0 ]] || die "Must be run as root."
 
-for cmd in parted mkfs.fat mkfs.ext4 rsync dd blkid mountpoint sync partprobe; do
-  command -v "$cmd" &>/dev/null || die "Required tool not found: $cmd  (install with pacman -S dosfstools e2fsprogs rsync parted util-linux)"
+# Map each required command to the pacman package that provides it
+declare -A CMD_PKG=(
+  [parted]=parted
+  [mkfs.fat]=dosfstools
+  [mkfs.ext4]=e2fsprogs
+  [rsync]=rsync
+  [dd]=coreutils
+  [blkid]=util-linux
+  [mountpoint]=util-linux
+  [sync]=coreutils
+  [partprobe]=parted
+  [xxd]=xxd
+)
+MISSING_PKGS=()
+for cmd in "${!CMD_PKG[@]}"; do
+  if ! command -v "$cmd" &>/dev/null; then
+    warn "Missing: $cmd (package: ${CMD_PKG[$cmd]})"
+    MISSING_PKGS+=("${CMD_PKG[$cmd]}")
+  fi
 done
+if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
+  # Deduplicate
+  readarray -t MISSING_PKGS < <(printf '%s\n' "${MISSING_PKGS[@]}" | sort -u)
+  info "Installing missing packages: ${MISSING_PKGS[*]}"
+  pacman -S --noconfirm --needed "${MISSING_PKGS[@]}" \
+    || die "Failed to install prerequisite packages: ${MISSING_PKGS[*]}"
+fi
 ok "All required tools present."
 
 # Verify the source device is a real block device
@@ -98,7 +138,7 @@ read -rp "$(echo -e "${BOLD}Type  YES  to continue:${RESET} ")" CONFIRM
 echo ""
 
 # ─── step 1: partition ───────────────────────────────────────────────────────
-heading "Step 1/9 — Partitioning ${EMMC_DEV}"
+heading "Step 1/10 — Partitioning ${EMMC_DEV}"
 # Unmount any existing eMMC partitions that may be mounted
 for part in "${EMMC_DEV}"p*; do
   [[ -b "$part" ]] || continue
@@ -109,9 +149,9 @@ for part in "${EMMC_DEV}"p*; do
 done
 
 parted -s "${EMMC_DEV}" mklabel gpt
-parted -s "${EMMC_DEV}" mkpart boot fat32 62500s 320MiB
+parted -s "${EMMC_DEV}" mkpart boot fat32 62500s 1GiB
 parted -s "${EMMC_DEV}" set 1 boot on
-parted -s "${EMMC_DEV}" mkpart root ext4 320MiB 100%
+parted -s "${EMMC_DEV}" mkpart root ext4 1GiB 100%
 partprobe "${EMMC_DEV}" 2>/dev/null || true
 # Give the kernel a moment to expose the new partition nodes
 for i in 1 2 3 4 5; do
@@ -123,25 +163,25 @@ done
 ok "Partitioned: ${EMMC_BOOT_PART} (boot, FAT32), ${EMMC_ROOT_PART} (root, ext4)"
 
 # ─── step 2: format ──────────────────────────────────────────────────────────
-heading "Step 2/9 — Formatting partitions"
+heading "Step 2/10 — Formatting partitions"
 mkfs.fat -F32 -n BOOT "${EMMC_BOOT_PART}"
 mkfs.ext4 -L ROOT -F "${EMMC_ROOT_PART}"
 ok "Formatted ${EMMC_BOOT_PART} (FAT32, label=BOOT) and ${EMMC_ROOT_PART} (ext4, label=ROOT)"
 
 # ─── step 3: mount ───────────────────────────────────────────────────────────
-heading "Step 3/9 — Mounting eMMC partitions"
+heading "Step 3/10 — Mounting eMMC partitions"
 mkdir -p "${MNT_BOOT}" "${MNT_ROOT}"
 mount "${EMMC_BOOT_PART}" "${MNT_BOOT}"
 mount "${EMMC_ROOT_PART}" "${MNT_ROOT}"
 ok "Mounted at ${MNT_BOOT} and ${MNT_ROOT}"
 
 # ─── step 4: copy boot partition ─────────────────────────────────────────────
-heading "Step 4/9 — Copying /boot to eMMC boot partition"
+heading "Step 4/10 — Copying /boot to eMMC boot partition"
 cp -a /boot/. "${MNT_BOOT}/"
 ok "Boot partition copied."
 
 # ─── step 5: copy root filesystem ────────────────────────────────────────────
-heading "Step 5/9 — Copying root filesystem (this will take several minutes)"
+heading "Step 5/10 — Copying root filesystem (this will take several minutes)"
 mkdir -p \
   "${MNT_ROOT}/proc" "${MNT_ROOT}/sys" "${MNT_ROOT}/dev" \
   "${MNT_ROOT}/run"  "${MNT_ROOT}/tmp" "${MNT_ROOT}/mnt"
@@ -154,14 +194,14 @@ rsync -aAX --one-file-system \
 ok "Root filesystem copied."
 
 # ─── step 6: flash U-Boot to eMMC raw sectors ────────────────────────────────
-heading "Step 6/9 — Flashing U-Boot to ${EMMC_DEV} (raw sectors)"
+heading "Step 6/10 — Flashing U-Boot to ${EMMC_DEV} (raw sectors)"
 sync
 dd if="${UBOOT_IDB}" of="${EMMC_DEV}" seek=64    conv=notrunc,fsync status=progress
 dd if="${UBOOT_ITB}"  of="${EMMC_DEV}" seek=16384 conv=notrunc,fsync status=progress
 ok "idbloader.img → seek=64, u-boot.itb → seek=16384"
 
 # ─── step 7: update extlinux.conf ────────────────────────────────────────────
-heading "Step 7/9 — Updating extlinux.conf with eMMC root PARTUUID"
+heading "Step 7/10 — Updating extlinux.conf with eMMC root PARTUUID"
 EMMC_ROOT_PARTUUID=$(blkid -s PARTUUID -o value "${EMMC_ROOT_PART}")
 [[ -n "${EMMC_ROOT_PARTUUID}" ]] || die "Could not read PARTUUID from ${EMMC_ROOT_PART}"
 info "eMMC root PARTUUID = ${EMMC_ROOT_PARTUUID}"
@@ -172,7 +212,7 @@ grep -q "root=PARTUUID=${EMMC_ROOT_PARTUUID}" "${EXTLINUX_DEST}" \
 ok "extlinux.conf updated: root=PARTUUID=${EMMC_ROOT_PARTUUID}"
 
 # ─── step 8: update fstab ────────────────────────────────────────────────────
-heading "Step 8/9 — Writing /etc/fstab on eMMC root"
+heading "Step 8/10 — Writing /etc/fstab on eMMC root"
 EMMC_BOOT_UUID=$(blkid -s UUID -o value "${EMMC_BOOT_PART}")
 EMMC_ROOT_UUID=$(blkid -s UUID -o value "${EMMC_ROOT_PART}")
 [[ -n "${EMMC_BOOT_UUID}" ]] || die "Could not read UUID from ${EMMC_BOOT_PART}"
@@ -185,7 +225,7 @@ printf "UUID=%-40s /      ext4  defaults  0 1\n" "${EMMC_ROOT_UUID}" >> "${MNT_R
 ok "fstab written."
 
 # ─── step 9: verify ──────────────────────────────────────────────────────────
-heading "Step 9/9 — Verification"
+heading "Step 9/10 — Verification"
 
 # 9a. Check U-Boot IDB magic (0x4e534d52 / "RMSN" at byte 0 of sector 64 = offset 32768)
 IDB_MAGIC_ACTUAL=$(dd if="${EMMC_DEV}" bs=512 skip=64 count=1 2>/dev/null | head -c 4 | xxd -p 2>/dev/null || true)

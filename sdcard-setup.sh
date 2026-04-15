@@ -47,9 +47,9 @@ for d in $MOUNTED_DEVS; do
 done
 
 parted -s "$DEV" mklabel gpt
-parted -s "$DEV" mkpart boot fat32 62500s 320MiB
-parted -s "$DEV" set 1 boot on
-parted -s "$DEV" mkpart root ext4 320MiB 100%
+parted -s "$DEV" mkpart boot fat32 62500s 1GiB
+ parted -s "$DEV" set 1 boot on
+parted -s "$DEV" mkpart root ext4 1GiB 100%
 mkfs.fat -F32 -n BOOT "${DEV}1"
 mkfs.ext4 -L ROOT "${DEV}2"
 mkdir -p /mnt/boot /mnt/root
@@ -58,7 +58,7 @@ mount "${DEV}2" /mnt/root
 if [ ! -f ArchLinuxARM-aarch64-latest.tar.gz ]; then
   wget https://archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz
 fi
-bsdtar -xpf ArchLinuxARM-aarch64-latest.tar.gz -C /mnt/root --exclude='./boot/dtbs'
+bsdtar -xpf ArchLinuxARM-aarch64-latest.tar.gz -C /mnt/root
 mv /mnt/root/boot/* /mnt/boot/
 bsdtar -xf "$PKGFILE" -C /mnt/boot --strip-components=1 boot/
 ROOT_PARTUUID=$(blkid -s PARTUUID -o value "${DEV}2")

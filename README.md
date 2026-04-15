@@ -15,7 +15,23 @@ This package provides everything needed to boot: the bootloader images, a baseli
 
 ---
 
-## Build the package
+# Automatic Install Scripts
+
+Host machine with sdcard (8gb): *Note: Find sdX with `lsblk` and replace in the commands below.*
+
+```
+git clone https://github.com/ChrisTitusTech/uboot-orangepi-rk3399
+cd uboot-orangepi-rk3399
+sudo ./install_sdcard.sh /dev/sdX
+```
+
+On Orange Pi 800 after first boot:
+
+```
+sudo ./install_emmc.sh
+```
+
+# MANUAL BUILD INSTRUCTIONS
 
 No cross-compiler needed — ships pre-built binaries. The package targets `aarch64` but contains no compiled code, so build it on any Linux host with `--ignorearch`:
 
@@ -41,9 +57,9 @@ Replace **`sdX`** with your SD card device (e.g. `sdb`). Run all commands as **r
 
 ```bash
 parted -s /dev/sdX mklabel gpt
-parted -s /dev/sdX mkpart boot fat32 62500s 320MiB
+parted -s /dev/sdX mkpart boot fat32 62500s 1GiB
 parted -s /dev/sdX set 1 boot on
-parted -s /dev/sdX mkpart root ext4 320MiB 100%
+parted -s /dev/sdX mkpart root ext4 1GiB 100%
 ```
 
 ### Step 2 — Format and mount
@@ -60,11 +76,9 @@ mount /dev/sdX2 root
 
 ```bash
 wget https://archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz
-bsdtar -xpf ArchLinuxARM-aarch64-latest.tar.gz -C root --exclude='./boot/dtbs'
+bsdtar -xpf ArchLinuxARM-aarch64-latest.tar.gz -C root
 mv root/boot/* boot/
 ```
-
-> The `--exclude='./boot/dtbs'` flag skips the thousands of upstream DTB files for other ARM boards, which would otherwise fill the 256 MB FAT partition. The OPi 800 DTB is installed in Step 4 from the package.
 
 ### Step 4 — Install bootloader files and configure boot
 
@@ -132,7 +146,8 @@ Initialize pacman and register the package so future upgrades reflash U-Boot aut
 ```bash
 pacman-key --init
 pacman-key --populate archlinuxarm
-pacman -Sy archlinux-keyring
+pacman -Sy --noconfirm --needed archlinuxarm-keyring
+pacman-key --populate archlinuxarm
 pacman -U /home/alarm/uboot-orangepi-800-*.pkg.tar.zst
 ```
 
@@ -156,9 +171,9 @@ pacman -S rsync
 
 ```bash
 parted -s /dev/mmcblk0 mklabel gpt
-parted -s /dev/mmcblk0 mkpart boot fat32 62500s 320MiB
+parted -s /dev/mmcblk0 mkpart boot fat32 62500s 1GiB
 parted -s /dev/mmcblk0 set 1 boot on
-parted -s /dev/mmcblk0 mkpart root ext4 320MiB 100%
+parted -s /dev/mmcblk0 mkpart root ext4 1GiB 100%
 ```
 
 ### Step 3 — Format
