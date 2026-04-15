@@ -4,3 +4,4 @@ src/
 *.pkg.tar.zst
 *.pkg.tar.xz
 *.pkg.tar.gz
+ArchLinuxARM-aarch64-latest.tar.gz
