@@ -43,7 +43,9 @@ mkfs.ext4 -L ROOT "${DEV}2"
 mkdir -p /mnt/boot /mnt/root
 mount "${DEV}1" /mnt/boot
 mount "${DEV}2" /mnt/root
-wget https://archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz
+if [ ! -f ArchLinuxARM-aarch64-latest.tar.gz ]; then
+  wget https://archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz
+fi
 bsdtar -xpf ArchLinuxARM-aarch64-latest.tar.gz -C /mnt/root --exclude='./boot/dtbs'
 mv /mnt/root/boot/* /mnt/boot/
 bsdtar -xf uboot-orangepi-800-*.pkg.tar.zst -C /mnt/boot --strip-components=1 boot/
@@ -57,5 +59,6 @@ dd if=/mnt/boot/idbloader.img of="$DEV" seek=64    conv=notrunc,fsync
 dd if=/mnt/boot/u-boot.itb    of="$DEV" seek=16384 conv=notrunc,fsync
 mkdir -p /mnt/root/home/alarm
 cp uboot-orangepi-800-*.pkg.tar.zst /mnt/root/home/alarm/
+cp copy-to-emmc.sh /mnt/root/home/alarm/
 sync
 umount /mnt/boot /mnt/root

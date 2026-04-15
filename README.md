@@ -130,10 +130,9 @@ Log in via SSH (use your router's DHCP table to find the IP) or serial console (
 Initialize pacman and register the package so future upgrades reflash U-Boot automatically:
 
 ```bash
-pacman -S archlinux-keyring
 pacman-key --init
 pacman-key --populate archlinuxarm
-pacman -Syu
+pacman -Sy archlinux-keyring
 pacman -U /home/alarm/uboot-orangepi-800-*.pkg.tar.zst
 ```
 
