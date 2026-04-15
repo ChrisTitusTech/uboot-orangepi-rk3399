@@ -295,7 +295,7 @@
 				motorcomm,clk-out-frequency-hz = <125000000>;
 				reset-gpios = <0x1b 0x0f 0x01>;
 				reset-assert-us = <10000>;
-				reset-deassert-us = <30000>;
+				reset-deassert-us = <50000>;
 				phandle = <0x154>;
 			};
 		};
