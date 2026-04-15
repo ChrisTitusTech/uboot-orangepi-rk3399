@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = linux-aarch64
+
+[Action]
+Description = Removing unneeded DTB files from /boot/dtbs...
+When = PostTransaction
+Exec = /usr/share/libalpm/scripts/uboot-orangepi-800-dtb-cleanup

@@ -8,6 +8,18 @@ if [[ -z "$1" ]]; then
 fi
 DEV=$1
 
+PKGFILE=$(ls uboot-orangepi-800-*.pkg.tar.zst 2>/dev/null | head -n1)
+if [[ -z "$PKGFILE" ]]; then
+  echo "No uboot-orangepi-800-*.pkg.tar.zst found. Building from source..."
+  CARCH=aarch64 makepkg --noconfirm --ignorearch
+  PKGFILE=$(ls uboot-orangepi-800-*.pkg.tar.zst 2>/dev/null | head -n1)
+  if [[ -z "$PKGFILE" ]]; then
+    echo "Error: makepkg failed to produce a package."
+    exit 1
+  fi
+fi
+echo "Using package: $PKGFILE"
+
 # Resolve to base device name (strip /dev/ and any trailing partition number)
 DEVNAME=$(basename "$DEV" | sed 's/[0-9]*$//')
 
@@ -48,7 +60,7 @@ if [ ! -f ArchLinuxARM-aarch64-latest.tar.gz ]; then
 fi
 bsdtar -xpf ArchLinuxARM-aarch64-latest.tar.gz -C /mnt/root --exclude='./boot/dtbs'
 mv /mnt/root/boot/* /mnt/boot/
-bsdtar -xf uboot-orangepi-800-*.pkg.tar.zst -C /mnt/boot --strip-components=1 boot/
+bsdtar -xf "$PKGFILE" -C /mnt/boot --strip-components=1 boot/
 ROOT_PARTUUID=$(blkid -s PARTUUID -o value "${DEV}2")
 sed -i "s|root=/dev/mmcblk1p2|root=PARTUUID=${ROOT_PARTUUID}|" /mnt/boot/extlinux/extlinux.conf
 BOOT_UUID=$(blkid -s UUID -o value "${DEV}1")
@@ -58,7 +70,7 @@ printf "UUID=%s\t/boot\tvfat\tdefaults\t0 2\nUUID=%s\t/\text4\tdefaults\t0 1\n" 
 dd if=/mnt/boot/idbloader.img of="$DEV" seek=64    conv=notrunc,fsync
 dd if=/mnt/boot/u-boot.itb    of="$DEV" seek=16384 conv=notrunc,fsync
 mkdir -p /mnt/root/home/alarm
-cp uboot-orangepi-800-*.pkg.tar.zst /mnt/root/home/alarm/
+cp "$PKGFILE" /mnt/root/home/alarm/
 cp copy-to-emmc.sh /mnt/root/home/alarm/
 sync
 umount /mnt/boot /mnt/root

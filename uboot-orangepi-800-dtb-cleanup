@@ -1,0 +1,5 @@
+#!/bin/sh
+# Remove all DTB files from /boot/dtbs except the OrangePi 800 one,
+# then prune any empty directories left behind.
+find /boot/dtbs -name '*.dtb' ! -name 'rk3399-orangepi-800.dtb' -delete
+find /boot/dtbs -mindepth 1 -type d -empty -delete

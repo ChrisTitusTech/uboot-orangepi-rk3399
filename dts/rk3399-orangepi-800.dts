@@ -334,7 +334,7 @@
 		compatible = "rockchip,rk3399-dw-mshc", "rockchip,rk3288-dw-mshc";
 		reg = <0x00 0xfe320000 0x00 0x4000>;
 		interrupts = <0x00 0x41 0x04 0x00>;
-		max-frequency = <0x8f0d180>;
+		max-frequency = <50000000>;
 		assigned-clocks = <0x08 0x1cd>;
 		assigned-clock-rates = <0xbebc200>;
 		clocks = <0x08 0x1ce 0x08 0x4c 0x08 0x9a 0x08 0x9b>;
@@ -346,12 +346,10 @@
 		status = "okay";
 		bus-width = <0x04>;
 		cap-sd-highspeed;
-		cap-mmc-highspeed;
 		cd-gpios = <0x20 0x07 0x01>;
 		disable-wp;
 		pinctrl-names = "default";
 		pinctrl-0 = <0x21 0x22 0x23>;
-		sd-uhs-sdr104;
 		vmmc-supply = <0x24>;
 		vqmmc-supply = <0x25>;
 		phandle = <0xc9>;
@@ -378,7 +376,6 @@
 		supports-emmc;
 		non-removable;
 		keep-power-in-suspend;
-		mmc-hs400-enhanced-strobe;
 		phandle = <0x90>;
 	};
 

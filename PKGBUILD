@@ -18,10 +18,14 @@ backup=('boot/extlinux/extlinux.conf'
 install=${pkgname}.install
 source=('idbloader.img'
         'u-boot.itb'
-        'extlinux.conf')
+        'extlinux.conf'
+        'uboot-orangepi-800-dtb-cleanup.hook'
+        'uboot-orangepi-800-dtb-cleanup')
 md5sums=('d0034efbfeb465732444094b59cabdea'
          'd5ed2a9edda0dbb197a0d38ea987085d'
-         'aca02c2c1d70720d5abba09b865ccd10')
+         'aca02c2c1d70720d5abba09b865ccd10'
+         'b9980c7821a157f272fa4661e46320ee'
+         '46025371bb1887e2ba5bd7aef8a8f28c')
 
 build() {
   dtc -I dts -O dtb -W no-unit_address_vs_reg \
@@ -34,4 +38,9 @@ package() {
   install -Dm644 u-boot.itb             "${pkgdir}/boot/u-boot.itb"
   install -Dm644 extlinux.conf          "${pkgdir}/boot/extlinux/extlinux.conf"
   install -Dm644 rk3399-orangepi-800.dtb "${pkgdir}/boot/dtbs/rockchip/rk3399-orangepi-800.dtb"
+
+  install -Dm644 uboot-orangepi-800-dtb-cleanup.hook \
+    "${pkgdir}/usr/share/libalpm/hooks/uboot-orangepi-800-dtb-cleanup.hook"
+  install -Dm755 uboot-orangepi-800-dtb-cleanup \
+    "${pkgdir}/usr/share/libalpm/scripts/uboot-orangepi-800-dtb-cleanup"
 }
