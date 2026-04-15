@@ -64,6 +64,18 @@ pacman -Sy --noconfirm --needed archlinuxarm-keyring
 pacman-key --populate archlinuxarm
 ok "Keyring ready."
 
+# ─── set passwords ───────────────────────────────────────────────────────────
+heading "Set passwords"
+info "Set the root password (required for secure eMMC install):"
+passwd root
+if id alarm &>/dev/null; then
+  info "Set the alarm user password:"
+  passwd alarm
+else
+  warn "User 'alarm' not found — skipping alarm password."
+fi
+ok "Passwords updated."
+
 # ─── prerequisite checks ─────────────────────────────────────────────────────
 heading "Prerequisite checks"
 
@@ -81,6 +93,12 @@ declare -A CMD_PKG=(
   [sync]=coreutils
   [partprobe]=parted
   [xxd]=xxd
+  [sudo]=sudo
+  [fakeroot]=fakeroot
+  [dtc]=dtc
+  [make]=make
+  [gcc]=gcc
+  [patch]=patch
 )
 MISSING_PKGS=()
 for cmd in "${!CMD_PKG[@]}"; do
