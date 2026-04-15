@@ -116,6 +116,26 @@ if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
 fi
 ok "All required tools present."
 
+# ─── OrangePi 800 firmware & runtime packages ─────────────────────────────
+# Install these with --needed so re-runs are idempotent.
+# These get copied to eMMC by the rsync step below.
+#   linux-firmware      – BCM43456 (AP6256 WiFi/BT, brcmfmac driver)
+#   bluez / bluez-utils – Bluetooth stack (AP6256)
+#   alsa-utils          – Audio (ES8316 codec)
+#   iw                  – WiFi tooling
+#   wpa_supplicant      – WPA2/3 authentication
+#   networkmanager      – Network management (covers WiFi + Ethernet)
+info "Installing OrangePi 800 firmware and runtime packages..."
+pacman -S --noconfirm --needed \
+  linux-firmware \
+  bluez bluez-utils \
+  alsa-utils \
+  iw \
+  wpa_supplicant \
+  networkmanager \
+  || die "Failed to install OrangePi 800 firmware/runtime packages."
+ok "OrangePi 800 firmware and runtime packages installed."
+
 # Verify the source device is a real block device
 [[ -b "${EMMC_DEV}" ]] || die "${EMMC_DEV} does not exist — is this an OrangePi 800?"
 
@@ -166,6 +186,7 @@ for part in "${EMMC_DEV}"p*; do
   fi
 done
 
+wipefs -a "${EMMC_DEV}"
 parted -s "${EMMC_DEV}" mklabel gpt
 parted -s "${EMMC_DEV}" mkpart boot fat32 62500s 1GiB
 parted -s "${EMMC_DEV}" set 1 boot on

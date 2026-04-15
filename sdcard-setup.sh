@@ -46,9 +46,10 @@ for d in $MOUNTED_DEVS; do
   fi
 done
 
+wipefs -a "$DEV"
 parted -s "$DEV" mklabel gpt
 parted -s "$DEV" mkpart boot fat32 62500s 1GiB
- parted -s "$DEV" set 1 boot on
+parted -s "$DEV" set 1 boot on
 parted -s "$DEV" mkpart root ext4 1GiB 100%
 mkfs.fat -F32 -n BOOT "${DEV}1"
 mkfs.ext4 -L ROOT "${DEV}2"
