@@ -1,7 +1,7 @@
 Use this on the Orange Pi 800 after copying the new DTB.
 
 Copy DTB and reboot:
-sudo install -m 0644 /path/to/rk3399-orangepi-800.dtb rk3399-orangepi-800.dtb
+sudo install -m 0644 /path/to/rk3399-orangepi-800.dtb /boot/dtbs/rockchip/rk3399-orangepi-800.dtb
 sync
 sudo reboot
 
