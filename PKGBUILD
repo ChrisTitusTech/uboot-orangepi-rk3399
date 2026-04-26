@@ -5,6 +5,8 @@
 
 buildarch=8
 
+_linux_include_dir=/usr/src/linux/include
+
 pkgname=uboot-orangepi-800
 pkgver=2022.04
 pkgrel=1
@@ -24,9 +26,11 @@ md5sums=('d0034efbfeb465732444094b59cabdea'
          'aca02c2c1d70720d5abba09b865ccd10')
 
 build() {
-  dtc -I dts -O dtb -W no-unit_address_vs_reg \
-      -o rk3399-orangepi-800.dtb \
-      "$startdir/dts/rk3399-orangepi-800.dts"
+        /usr/bin/cpp -nostdinc -undef -x assembler-with-cpp \
+                        -I"$_linux_include_dir" \
+                        "$startdir/dts/rk3399-orangepi-800.dts" | \
+                /usr/bin/dtc -I dts -O dtb -W no-unit_address_vs_reg \
+                        -o rk3399-orangepi-800.dtb
 }
 
 package() {
