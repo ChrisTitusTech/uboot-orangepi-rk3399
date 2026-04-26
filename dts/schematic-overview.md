@@ -25,9 +25,10 @@
     * **PHY Address**: 1 (Standard for this board design).
 * [cite_start]**WiFi/Bluetooth (AP6256)**: Connected via SDIO 0[cite: 4, 16].
     * [cite_start]**WL_REG_ON**: Controlled by `GPIO0_B2`[cite: 4].
-    * [cite_start]**WL_HOST_WAKE**: Monitored on `GPIO0_B2`[cite: 16].
-    * **BT_REG_ON**: Controlled by `GPIO0_B5` (standard AP6256 implementation).
-    * [cite_start]**BT_WAKE**: `BT_WAKE_L` signal[cite: 16].
+    * **WL_HOST_WAKE**: Monitored on `GPIO0_A3` (`SDIO0_INTn`, schematic net `WIFI_HOST_WAKE_L`).
+    * **BT_REG_ON**: Controlled by `GPIO0_B1` (schematic net `BT_REG_ON_H`).
+    * **BT_HOST_WAKE**: Monitored on `GPIO0_A4` (schematic net `BT_HOST_WAKE_L`).
+    * [cite_start]**BT_WAKE**: `BT_WAKE_L` is on `GPIO2_D2`[cite: 16].
     * [cite_start]**Interface**: Uses `UART0` for Bluetooth data[cite: 15].
 
 ### 4. Peripherals & Audio
@@ -35,8 +36,8 @@
     * **Connection**: Internal **USB interface**. [cite_start]The schematic shows `USB0-DP` and `USB0-DM` signals routed to the keyboard controller (Page 27)[cite: 34].
     * [cite_start]**Control**: There is a `KEY_CONTROL` signal on `GPIO1_C4`[cite: 15].
 * **Audio (ES8316)**: I2S-based codec.
-    * **Interface**: `I2S0` or `I2S1` for audio data.
-    * [cite_start]**Control**: `I2C1` or `I2C4` (Check I2C bus 1/4)[cite: 15].
+    * **Interface**: `I2S0` for the main codec path.
+    * [cite_start]**Control**: `I2C1` on `GPIO4_A1/GPIO4_A2`[cite: 15].
 * [cite_start]**HDMI**: Standard RK3399 HDMI output using `I2C7` for DDC (Data Display Channel)[cite: 6].
 
 ### 5. DTS-Ready Hardware Pin Mapping
@@ -50,6 +51,7 @@
 | **Bluetooth** | UART0 | `uart0` (`brcm,bcm43438-bt`) |
 | **HDMI** | I2C7 | `hdmi` (`pinctrl-0 = <&i2c7_xfer>`) |
 | **Audio** | I2C1/4 | `es8316@11` |
+| **Keyboard control** | GPIO1_C4 | schematic-only `KEY_CONTROL` |
 
 ### 6. Recommended DTS Structure Example
 To assist your build, ensure your DTS file includes these specific nodes for the Orange Pi 800:
@@ -63,6 +65,9 @@ vcc_wifi: vcc-wifi-regulator {
     regulator-name = "vcc_wifi";
 };
 
+// WiFi host wake
+// Schematic net WIFI_HOST_WAKE_L is on GPIO0_A3 (SDIO0_INTn).
+
 // Ethernet PHY
 &gmac {
     phy-supply = <&vcc3v3_s3>;
@@ -75,4 +80,7 @@ vcc_wifi: vcc-wifi-regulator {
 &usb_host0_ehci {
     status = "okay"; [cite_start]// Keyboard is often connected here [cite: 34]
 };
+
+// Keyboard control signal
+// Schematic net KEY_CONTROL is on GPIO1_C4.
 ```

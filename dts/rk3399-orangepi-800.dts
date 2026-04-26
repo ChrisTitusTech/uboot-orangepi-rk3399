@@ -46,10 +46,10 @@ stdout-path = "serial2:1500000n8";
  * 4 GB LPDDR4: 3840 MB low + 256 MB above 4 GB boundary.
  * U-Boot will update this node from DRAM init data.
  */
-memory@00000000 {
+memory {
 device_type = "memory";
 reg = <0x0 0x00000000 0x0 0xf0000000>,
-      <0x0 0x100000000 0x0 0x10000000>;
+    <0x1 0x00000000 0x0 0x10000000>;
 };
 
 /* ---------- Fixed regulators ---------- */
@@ -246,13 +246,11 @@ press-threshold-microvolt = <300000>;
 /* Power button — GPIO0_PA5, active-low */
 gpio_keys: gpio-keys {
 compatible = "gpio-keys";
-#address-cells = <1>;
-#size-cells = <0>;
 autorepeat;
 pinctrl-names = "default";
 pinctrl-0 = <&power_key>;
 
-button@0 {
+button {
 gpios = <&gpio0 RK_PA5 GPIO_ACTIVE_LOW>;
 linux,code = <KEY_POWER>;
 label = "GPIO Key Power";
@@ -279,7 +277,7 @@ default-state = "on";
 led-num {
 gpios = <&gpio4 RK_PD5 GPIO_ACTIVE_HIGH>;
 label = "num_led";
-function = LED_FUNCTION_KBD_NUMLOCK;
+function = LED_FUNCTION_NUMLOCK;
 linux,default-trigger = "kbd-numlock";
 default-state = "off";
 };
@@ -287,7 +285,7 @@ default-state = "off";
 led-caps {
 gpios = <&gpio3 RK_PD4 GPIO_ACTIVE_HIGH>;
 label = "caps_led";
-function = LED_FUNCTION_KBD_CAPSLOCK;
+function = LED_FUNCTION_CAPSLOCK;
 linux,default-trigger = "kbd-capslock";
 default-state = "off";
 };
@@ -358,6 +356,8 @@ status = "okay";
 };
 
 &hdmi_in_vopb {
+#address-cells = <1>;
+#size-cells = <0>;
 status = "okay";
 };
 
@@ -640,7 +640,7 @@ status = "okay";
 es8316: codec@11 {
 compatible = "everest,es8316";
 reg = <0x11>;
-clocks = <&cru SCLK_I2S0>;
+clocks = <&cru SCLK_I2S0_8CH>;
 clock-names = "mclk";
 #sound-dai-cells = <0>;
 hp-gpios = <&gpio4 RK_PD4 GPIO_ACTIVE_HIGH>;
@@ -683,6 +683,8 @@ disable-wp;
 keep-power-in-suspend;
 mmc-pwrseq = <&sdio_pwrseq>;
 non-removable;
+#address-cells = <1>;
+#size-cells = <0>;
 pinctrl-names = "default";
 pinctrl-0 = <&sdio0_bus4 &sdio0_cmd &sdio0_clk>;
 sd-uhs-sdr104;
@@ -792,6 +794,9 @@ status = "okay";
 };
 
 &usb_host0_ehci {
+/* Internal keyboard controller is routed on USB0; schematic also exposes
+ * KEY_CONTROL on GPIO1_C4, modeled below as a reserved board pinctrl group.
+ */
 status = "okay";
 };
 
@@ -946,6 +951,17 @@ rockchip,pins =
 bt_wake_l: bt-wake-l {
 rockchip,pins =
 <2 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
+};
+};
+
+/* Internal keyboard control signal from schematic (GPIO1_C4 / KEY_CONTROL).
+ * No mainline consumer is assigned yet, but the board-specific pin is kept
+ * here so the DTS matches the documented hardware.
+ */
+keyboard {
+key_control: key-control {
+rockchip,pins =
+<1 RK_PC4 RK_FUNC_GPIO &pcfg_pull_none>;
 };
 };
 
